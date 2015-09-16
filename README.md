@@ -1,15 +1,19 @@
 IDD3
 ====
 
+This is my fork of [@andrecunha](https://github.com/andrecunha)'s IDD3 system.
+
 IDD3 (*Propositional Idea Density from Dependency Trees*) is a Python library that can extract propositions from a sentence, given its dependency tree. Propositions are extracted according to Chand et al.'s rubric [1].
+
+The original system and evaluation is described in a 4-page IEEE conference paper [2].
 
 Installation
 ------------
 
-To install IDD3 on your system, run can run:
+To install my fork of IDD3 on your system, run can run:
 
 ```
-$ git clone https://github.com/andrecunha/idd3.git
+$ git clone https://github.com/dmhowcroft/idd3.git
 $ cd idd3
 $ python setup.py install
 ```
@@ -31,4 +35,6 @@ If you have a CoNLL-X file, say `input.conll`, that already has the dependency t
 References
 ----------
 
-[1]  V. Chand, K. Baynes, L. Bonnici, and S. T. Farias, *Analysis of Idea Density (AID): A Manual*, University of California at Davis, 2010. Available at http://mindbrain.ucdavis.edu/labs/Baynes/AIDManual.ChandBaynesBonniciFarias.1.26.10.pdf.
+[1]  V. Chand, K. Baynes, L. Bonnici, and S. T. Farias, *Analysis of Idea Density (AID): A Manual*, University of California at Davis, 2010. Available from (http://mindbrain.ucdavis.edu/labs/Baynes/AIDManual.ChandBaynesBonniciFarias.1.26.10.pdf)
+
+[2] Cunha, A. L. V. Da, L. B. De Sousa, L. L. Mansur, & S. M. Aluísio. (2015). "Automatic Proposition Extraction from Dependency Trees: Helping Early Prediction of Alzheimer’s Disease from Narratives". *2015 IEEE 28th International Symposium on Computer-Based Medical Systems*, 127–130. doi:10.1109/CBMS.2015.19. Available (behind a paywall) from [IEEExplore](http://ieeexplore.ieee.org/xpl/articleDetails.jsp?arnumber=7167471).
