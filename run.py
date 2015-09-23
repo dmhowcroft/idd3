@@ -1,4 +1,9 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+#
+# Extension to Andre Cunha's IDD3
+# Copyright (C) 2015  David M. Howcroft
+#
 # IDD3 - Propositional Idea Density from Dependency Trees
 # Copyright (C) 2014  Andre Luiz Verucci da Cunha
 #
