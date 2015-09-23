@@ -47,20 +47,20 @@ except ImportError:
 # Stanford parser
 
 # Change this variable to the path on your system
-stanford_path = os.path.expanduser('~') + \
-    "/Develop/stanford_tools/stanford-parser"
-stanford_run_cmd = 'java -mx1024m -cp ' + stanford_path + \
+stanford_path = os.path.expanduser('~') + "/apps/stanford-corenlp"
+java_dir = '/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/'
+stanford_run_cmd = java_dir + 'java -mx1024m -cp ' + stanford_path + \
     '/*: edu.stanford.nlp.parser.lexparser.LexicalizedParser ' + \
     '-outputFormat penn edu/stanford/nlp/models/lexparser/englishPCFG.ser.gz'
-stanford_convert_tree_cmd = 'java -mx1024m -cp ' + stanford_path + \
+stanford_convert_tree_cmd = java_dir + 'java -mx1024m -cp ' + stanford_path + \
     '/*: edu.stanford.nlp.trees.EnglishGrammaticalStructure ' + \
-    '-conllx -basic -treeFile'
+    '-basic -conllx -treeFile'
 
 
 def get_sentence(graph):
     """Turns a graph into a list of words.
     """
-    return ' '.join([node['word'] for node in graph.nodelist if node['word']])
+    return ' '.join([graph.nodes[node]['word'] for node in graph.nodes if graph.nodes[node]['word']])
 
 
 def process_graphs(graphs):
@@ -70,7 +70,10 @@ def process_graphs(graphs):
     for index in range(len(graphs) - 1):
         print('-' * int(columns))
         relations = []
-        for relation in graphs[index].nodelist:
+        for node in graphs[index].nodes:
+            relation = graphs[index].nodes[node]
+            if relation['rel'] == 'ROOT':
+                relation['rel'] = 'root'
             relations.append(Relation(**relation))
 
         print(colored('Sentence %d:' % (index + 1), 'white', attrs=['bold']))
@@ -109,14 +112,21 @@ def main():
 
         # graphs = parser.tagged_parse_sents(tagged_sents)
 
-        with open('/tmp/tmp.tree', mode='w') as tmp_file,\
-                open('/tmp/output.conll', mode='w') as conll_file:
+        with open('tmp.tree', mode='w') as tmp_file, open('output.conll', mode='w') as conll_file:
             call((stanford_run_cmd + ' ' + argv[1]).split(' '), stdout=tmp_file)
-            call((stanford_convert_tree_cmd + ' /tmp/tmp.tree').split(' '),
+            call((stanford_convert_tree_cmd + ' tmp.tree').split(' '),
                  stdout=conll_file)
 
-        graphs = nltk.parse.dependencygraph.DependencyGraph.load(
-            '/tmp/output.conll')
+        # Rewrite the root node label to match NLTK's expectations
+        f = open('output.conll','r')
+        fdata = f.read()
+        f.close()
+        f = open('output.conll','w')
+        fdata = fdata.replace("root", "ROOT")
+        f.write(fdata)
+        f.close()
+
+        graphs = nltk.parse.dependencygraph.DependencyGraph.load('output.conll')
 
     stats = process_graphs(graphs)
     print_stats(stats)
