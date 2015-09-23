@@ -109,6 +109,17 @@ def print_stats(stats):
         print('{0}\t{1}'.format(kind, n))
 
 
+def print_sentfeats(stats):
+    total = 0
+    vals = []
+    for kind in ['P', 'M', 'C']:
+        n = stats.get(kind, 0)
+        total += n
+        vals.append(str(n))
+    print(" ".join(vals))
+
+
+
 def main():
     if len(argv) < 2:
         print('Usage: python', argv[0], '<input file>')
@@ -123,10 +134,12 @@ def main():
 
         # graphs = parser.tagged_parse_sents(tagged_sents)
 
-        with open(TEMPORARY_FILENAME, mode='w') as tmp_file, open(CONLL_FILENAME, mode='w') as conll_file:
-            call((stanford_run_cmd + ' ' + argv[1]).split(' '), stdout=tmp_file)
-            call((stanford_convert_tree_cmd + ' tmp.tree').split(' '),
-                 stdout=conll_file)
+        with open(TEMPORARY_FILENAME, mode='w') as tmp_file, \
+                open(CONLL_FILENAME, mode='w') as conll_file, \
+                open('error', 'w') as err_tmp,\
+                open('conll.err', 'w') as err_conll:
+            call((stanford_run_cmd + ' ' + argv[1]).split(' '), stdout=tmp_file, stderr=err_tmp)
+            call((stanford_convert_tree_cmd + ' tmp.tree').split(' '), stdout=conll_file, stderr=err_conll)
 
         # Rewrite the root node label to match NLTK's expectations
         f = open(CONLL_FILENAME, 'r')
@@ -137,10 +150,11 @@ def main():
         f.write(fdata)
         f.close()
 
-        graphs = nltk.parse.dependencygraph.DependencyGraph.load('output.conll')
+        graphs = nltk.parse.dependencygraph.DependencyGraph.load(CONLL_FILENAME)
 
     stats = process_graphs(graphs)
-    print_stats(stats)
+    # print_stats(stats)
+    print_sentfeats(stats)
 
 
 if __name__ == '__main__':
