@@ -41,19 +41,24 @@ except ImportError:
     def colored(string, color, attrs):
         return string
 
+CONLL_FILENAME = 'output.conll'
+# We write the Stanford parse to a file as an intermediate stage in our processing.
+TEMPORARY_FILENAME = 'tmp.tree'
 
 # MaltParser
-
+# Example from Andre's code; I do not know if this works when commented in -DMH
 # parser = nltk.parse.MaltParser(
-#     working_dir="/home/andre/Develop/malt/maltparser-1.8",
+#     working_dir="/path/to/maltparser-1.8",
 #     mco="engmalt.linear-1.7",
 #     additional_java_args=['-Xmx512m'])
 
-# Stanford parser
 
+# Stanford parser
 # Change this variable to the path on your system
 stanford_path = os.path.expanduser('~') + "/apps/stanford-corenlp"
+# Define the path to the directory containing the version of Java you want to use
 java_dir = '/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/'
+
 stanford_run_cmd = java_dir + 'java -mx1024m -cp ' + stanford_path + \
     '/*: edu.stanford.nlp.parser.lexparser.LexicalizedParser ' + \
     '-outputFormat penn edu/stanford/nlp/models/lexparser/englishPCFG.ser.gz'
@@ -112,21 +117,22 @@ def main():
     if argv[1].endswith('.conll'):
         graphs = nltk.parse.dependencygraph.DependencyGraph.load(argv[1])
     else:
+        # I assume this is used when you're running the MALT parser.
         # tagged_sents = [nltk.pos_tag(nltk.word_tokenize(sent))
         #                 for sent in sents]
 
         # graphs = parser.tagged_parse_sents(tagged_sents)
 
-        with open('tmp.tree', mode='w') as tmp_file, open('output.conll', mode='w') as conll_file:
+        with open(TEMPORARY_FILENAME, mode='w') as tmp_file, open(CONLL_FILENAME, mode='w') as conll_file:
             call((stanford_run_cmd + ' ' + argv[1]).split(' '), stdout=tmp_file)
             call((stanford_convert_tree_cmd + ' tmp.tree').split(' '),
                  stdout=conll_file)
 
         # Rewrite the root node label to match NLTK's expectations
-        f = open('output.conll','r')
+        f = open(CONLL_FILENAME, 'r')
         fdata = f.read()
         f.close()
-        f = open('output.conll','w')
+        f = open(CONLL_FILENAME, 'w')
         fdata = fdata.replace("root", "ROOT")
         f.write(fdata)
         f.close()
