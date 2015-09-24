@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Extension to Andre Cunha's IDD3
+# Modified IDD3/run.py for larger corpora.
 # Copyright (C) 2015  David M. Howcroft
 #
 # IDD3 - Propositional Idea Density from Dependency Trees
@@ -44,14 +44,6 @@ except ImportError:
 CONLL_FILENAME = 'output.conll'
 # We write the Stanford parse to a file as an intermediate stage in our processing.
 TEMPORARY_FILENAME = 'tmp.tree'
-
-# MaltParser
-# Example from Andre's code; I do not know if this works when commented in -DMH
-# parser = nltk.parse.MaltParser(
-#     working_dir="/path/to/maltparser-1.8",
-#     mco="engmalt.linear-1.7",
-#     additional_java_args=['-Xmx512m'])
-
 
 # Stanford parser
 # Change this variable to the path on your system
@@ -117,7 +109,6 @@ def print_sentfeats(stats):
         total += n
         vals.append(str(n))
     print(" ".join(vals))
-
 
 
 def main():
