@@ -1,11 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Modified IDD3/run.py for larger corpora.
+# Streaming Stanford Parser output through IDD3
 # Copyright (C) 2015  David M. Howcroft
-#
-# IDD3 - Propositional Idea Density from Dependency Trees
-# Copyright (C) 2014  Andre Luiz Verucci da Cunha
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the Free
@@ -32,6 +29,8 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 import os
+# columns is the width of the terminal the user is viewing
+# This is used for output pretty printing
 _, columns = os.popen('stty size', 'r').read().split()
 
 try:
@@ -45,18 +44,17 @@ CONLL_FILENAME = 'output.conll'
 # We write the Stanford parse to a file as an intermediate stage in our processing.
 TEMPORARY_FILENAME = 'tmp.tree'
 
+
 # Stanford parser
 # Change this variable to the path on your system
 stanford_path = os.path.expanduser('~') + "/apps/stanford-corenlp"
 # Define the path to the directory containing the version of Java you want to use
 java_dir = '/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/'
 
-stanford_run_cmd = java_dir + 'java -mx1024m -cp ' + stanford_path + \
+
+STANFORD_PARSER_INVOCATION = java_dir + 'java -mx1024m -cp ' + stanford_path + \
     '/*: edu.stanford.nlp.parser.lexparser.LexicalizedParser ' + \
-    '-outputFormat penn edu/stanford/nlp/models/lexparser/englishPCFG.ser.gz'
-stanford_convert_tree_cmd = java_dir + 'java -mx1024m -cp ' + stanford_path + \
-    '/*: edu.stanford.nlp.trees.EnglishGrammaticalStructure ' + \
-    '-basic -conllx -treeFile'
+    '-outputFormat conll2007 edu/stanford/nlp/models/lexparser/englishPCFG.ser.gz {}'
 
 
 def get_sentence(graph):
@@ -65,12 +63,13 @@ def get_sentence(graph):
     return ' '.join([graph.nodes[node]['word'] for node in graph.nodes if graph.nodes[node]['word']])
 
 
-def process_graphs(graphs):
+def process_graphs(graphs, verbose=False):
     engine = Engine(rules.all_rulesets, transform.all_transformations)
     stats = defaultdict(int)
 
     for index in range(len(graphs) - 1):
-        print('-' * int(columns))
+        if verbose:
+            print('-' * int(columns))
         relations = []
         for node in graphs[index].nodes:
             relation = graphs[index].nodes[node]
@@ -78,19 +77,22 @@ def process_graphs(graphs):
                 relation['rel'] = 'root'
             relations.append(Relation(**relation))
 
-        print(colored('Sentence %d:' % (index + 1), 'white', attrs=['bold']))
-        print('\t' + get_sentence(graphs[index]))
+        if verbose:
+            print(colored('Sentence %d:' % (index + 1), 'white', attrs=['bold']))
+            print('\t' + get_sentence(graphs[index]))
 
-        print(colored('Propositions:', 'white', attrs=['bold']))
+            print(colored('Propositions:', 'white', attrs=['bold']))
         try:
             engine.analyze(relations)
             for i, prop in enumerate(engine.props):
-                print(str(i + 1) + ' ' + str(prop))
+                if verbose:
+                    print(str(i + 1) + ' ' + str(prop))
                 stats[prop.kind] += 1
         except Exception:
             pass
 
-    print('-' * int(columns))
+    if verbose:
+        print('-' * int(columns))
     return stats
 
 
@@ -119,18 +121,8 @@ def main():
     if argv[1].endswith('.conll'):
         graphs = nltk.parse.dependencygraph.DependencyGraph.load(argv[1])
     else:
-        # I assume this is used when you're running the MALT parser.
-        # tagged_sents = [nltk.pos_tag(nltk.word_tokenize(sent))
-        #                 for sent in sents]
-
-        # graphs = parser.tagged_parse_sents(tagged_sents)
-
-        with open(TEMPORARY_FILENAME, mode='w') as tmp_file, \
-                open(CONLL_FILENAME, mode='w') as conll_file, \
-                open('error', 'w') as err_tmp,\
-                open('conll.err', 'w') as err_conll:
-            call((stanford_run_cmd + ' ' + argv[1]).split(' '), stdout=tmp_file, stderr=err_tmp)
-            call((stanford_convert_tree_cmd + ' tmp.tree').split(' '), stdout=conll_file, stderr=err_conll)
+        with open(CONLL_FILENAME, mode='w') as conll_file, open('output.stderr', 'w') as conll_err:
+            call(STANFORD_PARSER_INVOCATION.format(argv[1]).split(' '), stdout=conll_file, stderr=conll_err)
 
         # Rewrite the root node label to match NLTK's expectations
         f = open(CONLL_FILENAME, 'r')
@@ -143,9 +135,7 @@ def main():
 
         graphs = nltk.parse.dependencygraph.DependencyGraph.load(CONLL_FILENAME)
 
-    stats = process_graphs(graphs)
-    # print_stats(stats)
-    print_sentfeats(stats)
+    print_sentfeats(process_graphs(graphs))
 
 
 if __name__ == '__main__':

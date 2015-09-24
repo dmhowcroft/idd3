@@ -38,5 +38,5 @@ setup(
     ],
     install_requires = ['nltk >= 3.0.0',
                         ],
-    extras_require = {'colored_output':'termcolor >= 1.1.0'}
+    extras_require = {'colored_output': ['termcolor >= 1.1.0']}
 )
