@@ -40,7 +40,6 @@ except ImportError:
     def colored(string, color, attrs):
         return string
 
-CONLL_FILENAME = 'output.conll'
 # We write the Stanford parse to a file as an intermediate stage in our processing.
 TEMPORARY_FILENAME = 'tmp.tree'
 
@@ -54,7 +53,7 @@ java_dir = '/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/'
 
 STANFORD_PARSER_INVOCATION = java_dir + 'java -mx1024m -cp ' + stanford_path + \
     '/*: edu.stanford.nlp.parser.lexparser.LexicalizedParser ' + \
-    '-outputFormat conll2007 edu/stanford/nlp/models/lexparser/englishPCFG.ser.gz {}'
+    '-maxLength 80 -outputFormat conll2007 edu/stanford/nlp/models/lexparser/englishPCFG.ser.gz {}'
 
 
 def get_sentence(graph):
@@ -113,29 +112,50 @@ def print_sentfeats(stats):
     print(" ".join(vals))
 
 
-def main():
-    if len(argv) < 2:
-        print('Usage: python', argv[0], '<input file>')
-        return
+def print_usage():
+        print('Usage: python', argv[0], ' <mode> <input file> <output file>')
+        print()
+        print('  <mode>           conll (to generate a CONLL file from a SENTS file; or')
+        print('                   density (to generate idea density features from a CONLL file)')
+        print('  <input file>     read as input')
+        print('  <output file>    will be overwritten (in conll mode)')
 
-    if argv[1].endswith('.conll'):
-        graphs = nltk.parse.dependencygraph.DependencyGraph.load(argv[1])
+
+def main():
+    if len(argv) < 2 or "-h" in argv:
+        print_usage()
+        exit()
+
+    in_filename = argv[2]
+    if len(argv) > 3:
+        out_filename = argv[3]
     else:
-        with open(CONLL_FILENAME, mode='w') as conll_file, open('output.stderr', 'w') as conll_err:
-            call(STANFORD_PARSER_INVOCATION.format(argv[1]).split(' '), stdout=conll_file, stderr=conll_err)
+        out_filename = in_filename+".idd3."+argv[1]
+
+    if argv[1] == 'density':
+        graphs = nltk.parse.dependencygraph.DependencyGraph.load(in_filename)
+        # TODO change this to write to an output file
+        print_sentfeats(process_graphs(graphs))
+    elif argv[1] == 'conll':
+        conll_file = open(out_filename, 'w')
+        conll_err = open(out_filename+'.stderr', 'w')
+
+        call(STANFORD_PARSER_INVOCATION.format(in_filename).split(' '), stdout=conll_file, stderr=conll_err)
+
+        conll_file.close()
+        conll_err.close()
 
         # Rewrite the root node label to match NLTK's expectations
-        f = open(CONLL_FILENAME, 'r')
-        fdata = f.read()
-        f.close()
-        f = open(CONLL_FILENAME, 'w')
-        fdata = fdata.replace("root", "ROOT")
-        f.write(fdata)
-        f.close()
-
-        graphs = nltk.parse.dependencygraph.DependencyGraph.load(CONLL_FILENAME)
-
-    print_sentfeats(process_graphs(graphs))
+        conll_file = open(out_filename, 'r')
+        conll_data = conll_file.read()
+        conll_file.close()
+        conll_file = open(out_filename, 'w')
+        conll_data = conll_data.replace("root", "ROOT")
+        conll_file.write(conll_data)
+        conll_file.close()
+    else:
+        print_usage()
+        exit()
 
 
 if __name__ == '__main__':
