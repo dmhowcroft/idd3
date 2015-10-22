@@ -455,6 +455,19 @@ class TransformNnJoin(Transformation):
                     relation.rel = 'nn-join'
 
 
+class TransformConj(Transformation):
+    """Replace conjunction with the head's head and relation"""
+
+    def transform(self, relations):
+        for relation in relations:
+            if relation.rel == 'conj':
+                head = relations[relation.head]
+                new_head = head.head
+                new_rel = head.rel
+                relation.rel = new_rel
+                relation.head = new_head
+
+
 all_transformations = [RemovePunctuation(),
                        RemoveParataxisFillers(),
                        RemoveUtteranceInitialConjunction(),
@@ -476,4 +489,5 @@ all_transformations = [RemovePunctuation(),
                        FixAdverbRepetition(),
                        FixReflexivePronouns(),
                        FixXcompAttributions(),
-                       TransformNnJoin()]
+                       TransformNnJoin(),
+                       TransformConj()]
