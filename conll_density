@@ -21,7 +21,7 @@ from __future__ import print_function, unicode_literals, division
 
 from idd3 import Relation, Engine, rules, transform
 import nltk
-from sys import argv
+from sys import argv, stdout
 from subprocess import call
 from collections import defaultdict
 
@@ -58,7 +58,7 @@ java_dir = '/usr/lib/jvm/java-8-openjdk-amd64/jre/bin/'
 
 STANFORD_PARSER_INVOCATION = java_dir + 'java -mx1024m -cp ' + stanford_path + \
     '/*: edu.stanford.nlp.parser.lexparser.LexicalizedParser ' + \
-    '-maxLength 80 -outputFormat conll2007 -outputFormatOptions includePunctuationDependencies ' \
+    '-maxLength 160 -outputFormat conll2007 -outputFormatOptions includePunctuationDependencies ' \
     '-sentences newline -originalDependencies edu/stanford/nlp/models/lexparser/englishPCFG.ser.gz {}'
 
 
@@ -72,7 +72,7 @@ def process_graphs(graphs, verbose=False):
     engine = Engine(rules.all_rulesets, transform.all_transformations)
     stats = defaultdict(int)
 
-    for i, graph in enumerate(graphs):
+    for sent_num, graph in enumerate(graphs):
         if verbose:
             print('-' * int(columns))
 
@@ -80,38 +80,35 @@ def process_graphs(graphs, verbose=False):
         for node in graph.nodes:
             relation = graph.nodes[node]
             try:
-                relation['rel']
                 if relation['rel'] == 'ROOT':
                     relation['rel'] = 'root'
                 if 'ROOT' in relation['deps']:
                     relation['deps']['root'] = relation['deps'].pop('ROOT')
                 relations.append(Relation(**relation))
             except KeyError:
-                # print(graphs[index].nodes)
-                # print(relation)
-                # print(get_sentence(graph))
+                # TODO check that this is okay
                 pass
 
         if verbose:
-            print(colored('Sentence %d:' % (i, ), 'white', attrs=['bold']))
+            print(colored('Sentence %d:' % (sent_num, ), 'white', attrs=['bold']))
             print('\t' + get_sentence(graph))
 
-            print('Relations:')
-            print(relations)
+            # print('Relations:')
+            # print(relations)
 
             print(colored('Propositions:', 'white', attrs=['bold']))
 
         try:
             engine.analyze(relations)
-            for i, prop in enumerate(engine.props):
-                if verbose:
-                    print(str(i + 1) + ' ' + str(prop))
+            for prop_num, prop in enumerate(engine.props):
+                # if verbose:
+                #     print(str(prop_num + 1) + ' ' + str(prop))
                 stats[prop.kind] += 1
         except IndexError:
             print("Failed to process:")
             if verbose:
                 print(relations)
-                print_exc()
+                print_exc(file=stdout)
             print("------------------")
             stats = {'P': -1, 'M': -1, 'C': -1}
         except TypeError:
@@ -122,7 +119,6 @@ def process_graphs(graphs, verbose=False):
                 print_exc()
             print("------------------")
             stats = {'P': -2, 'M': -1, 'C': -1}
-
 
     if verbose:
         print('-' * int(columns))
@@ -170,6 +166,8 @@ def main():
         graphs = nltk.parse.dependencygraph.DependencyGraph.load(in_filename)
 
         out_file = open(out_filename, 'w')
+        # the last graph is empty, cruft from the end of the file
+        graphs = graphs[:-1]
         for graph in graphs:
             # print(graph)
             stats = process_graphs([graph])

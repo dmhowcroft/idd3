@@ -164,7 +164,12 @@ class NounPhraseRuleset(Ruleset):
             # _, ids, wdt = engine.analyze(relations, i, context + [index])
             ret = engine.analyze(relations, i, context + [index], info)
             ids = ret['prop_ids']
-            wdt = ret['subjs']
+            # TODO make this better than try catch
+            try:
+                wdt = ret['subjs']
+            except KeyError:
+                # TODO check this is the right return type
+                return [], []
 
         return ids, wdt
 

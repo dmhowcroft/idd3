@@ -38,7 +38,7 @@ class VerbPhraseRuleset(Ruleset):
 
         # nsubj
         subj_index = Relation.get_children_with_dep('nsubj', relations, index)
-        if subj_index == []:
+        if not subj_index:
             if 'subj' in info:
                 subj = {'return_list': ['(%s)' % s
                                         for s in info['subj']['return_list']],
@@ -68,6 +68,10 @@ class VerbPhraseRuleset(Ruleset):
                 and 'subj' in info:
             subj['return_list'][0] += '(={0})'.format(
                 info['subj']['return_list'][0])
+
+        # Replace NoneType with NO SUBJECT string
+        if subj['return_list'][0] is None:
+            subj['return_list'][0] = '(NO_SUBJ)'
 
         return subj
 
@@ -207,7 +211,7 @@ class VerbPhraseRuleset(Ruleset):
 
         prep_indices = Relation.get_children_with_dep('prep', relations,
                                                       index)
-        if prep_indices == []:
+        if not prep_indices:
             return []
 
         if subjs['return_list'][0].lower() == 'it':
@@ -503,8 +507,13 @@ class VerbPhraseRuleset(Ruleset):
 
         subjs = self.process_subj(relations, index, context, engine, info)
 
-        cop_index = Relation.get_children_with_dep('cop', relations, index)[0]
-        cop = engine.analyze(relations, cop_index, context + [index])
+        try:
+            cop_index = Relation.get_children_with_dep('cop', relations, index)[0]
+            cop = engine.analyze(relations, cop_index, context + [index])
+        except IndexError:
+            return {'return_value': None, 'prop_ids': []}
+            # print(relations[index])
+            # raise
 
         auxs = self.process_auxs(relations, index, context, engine, info)
 
@@ -536,8 +545,13 @@ class VerbPhraseRuleset(Ruleset):
 
         subjs = self.process_subj(relations, index, context, engine, info)
 
-        cop_index = Relation.get_children_with_dep('cop', relations, index)[0]
-        cop = engine.analyze(relations, cop_index, context + [index])
+        try:
+            cop_index = Relation.get_children_with_dep('cop', relations, index)[0]
+            cop = engine.analyze(relations, cop_index, context + [index])
+        except IndexError:
+            return {'return_value': None, 'prop_ids': []}
+            # print(relations[index])
+            # raise
 
         auxs = self.process_auxs(relations, index, context, engine, info)
 
@@ -576,12 +590,14 @@ class VerbPhraseRuleset(Ruleset):
                                       'PRP'):
             return_dict = self.handle_cop_with_np(relations, index, context,
                                                   engine, info)
-        elif relations[index].tag in ('JJ'):
+        # DMH: treat JJR and JJS the same as JJ for now?
+        elif relations[index].tag in ('JJ'): # , 'JJR', 'JJS'):
             return_dict = self.handle_cop_with_adjp(relations, index, context,
                                                     engine, info)
         else:
             print('VP: cannot handle', relations[index].tag, 'yet.')
-            return_dict = None
+            # DMH: originally this just returned None
+            return {'return_value': None, 'prop_ids': []}
 
         # Process adverbial clauses.
         VerbPhraseRuleset.process_advcl(relations, index, context, engine,

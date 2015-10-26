@@ -150,7 +150,7 @@ class Engine(object):
     """An engine is responsible for running the analysis process, by calling the
         right rulesets and collecting the emitted propositions."""
 
-    def __init__(self, rulesets, transformations=[]):
+    def __init__(self, rulesets, transformations=None):
         """Form an engine.
 
         :rulesets: a list of the rulesets to be used.
@@ -158,7 +158,11 @@ class Engine(object):
             sentences prior to processing.
         """
         self.rulesets = rulesets
-        self.transformations = transformations
+        if transformations:
+            self.transformations = transformations
+        else:
+            self.transformations = []
+        self.props = []
 
     def _build_rulesets_dict(self, relations):
         """Create a dictionary associating relation labels to their
@@ -197,7 +201,7 @@ class Engine(object):
         """
         relations[index].processed = True
 
-    def analyze(self, relations, index=0, context=[], info={}):
+    def analyze(self, relations, index=0, context=None, info=None):
         """Analyze a sentence, using this instance's ruleset set.
 
         :relations: the relations in a sentence.
@@ -207,6 +211,10 @@ class Engine(object):
         :returns: the return value of the corresponding ruleset's extract
             method.
         """
+        if not context:
+            context = []
+        if not info:
+            info = {}
         # Clear results from previous executions, apply transformations,
         #   and prepare for starting.
         if relations[index].rel == 'TOP':
@@ -216,7 +224,6 @@ class Engine(object):
             from pprint import pformat
             logger.debug('After transformations:\n%s', pformat(relations))
 
-            self.props = []
             for relation in relations:
                 relation.processed = False
             self._build_rulesets_dict(relations)
@@ -226,8 +233,12 @@ class Engine(object):
                      .__class__.__name__,
                      context[-1] if len(context) > 0 else -1)
 
-        value = self._rulesets_dict[relations[index].rel]\
-            .extract(relations, index, context, self, info)
+        # Separated this and added conditional to prevent AttributeErrors when calling extract on entries which are None
+        ruleset = self._rulesets_dict[relations[index].rel]
+        if ruleset:
+            value = ruleset.extract(relations, index, context, self, info)
+        else:
+            value = None
 
         self.mark_processed(relations, index)
 
