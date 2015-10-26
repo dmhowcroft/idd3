@@ -68,11 +68,12 @@ def get_sentence(graph):
     return ' '.join([str(graph.nodes[node]['word']) for node in graph.nodes if 'word' in graph.nodes[node]])
 
 
-def process_graphs(graphs, verbose=False):
+def process_graphs(graphs, init_sent_num=0, verbose=False):
     engine = Engine(rules.all_rulesets, transform.all_transformations)
     stats = defaultdict(int)
 
     for sent_num, graph in enumerate(graphs):
+        sent_num += init_sent_num
         if verbose:
             print('-' * int(columns))
 
@@ -106,6 +107,7 @@ def process_graphs(graphs, verbose=False):
                 stats[prop.kind] += 1
         except IndexError:
             print("Failed to process:")
+            print(" ".join([relation.word for relation in relations[1:]]))
             if verbose:
                 print(relations)
                 print_exc(file=stdout)
@@ -168,9 +170,9 @@ def main():
         out_file = open(out_filename, 'w')
         # the last graph is empty, cruft from the end of the file
         graphs = graphs[:-1]
-        for graph in graphs:
+        for number, graph in enumerate(graphs):
             # print(graph)
-            stats = process_graphs([graph])
+            stats = process_graphs([graph], init_sent_num=number+1, verbose=True)
             # print(stats)
 
             out_file.write(get_sentfeats(stats))

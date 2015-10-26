@@ -216,8 +216,11 @@ class VerbPhraseRuleset(Ruleset):
 
         if subjs['return_list'][0].lower() == 'it':
             prep_index = prep_indices[0]
-            pobj_index = Relation.get_children_with_dep('pobj', relations,
-                                                        prep_index)[0]
+            pobj_children = Relation.get_children_with_dep('pobj', relations, prep_index)
+            if pobj_children:
+                pobj_index = pobj_children[0]
+            else:
+                return []
 
             pobj_return_value = engine.analyze(relations, pobj_index, context +
                                                [index, prep_index])

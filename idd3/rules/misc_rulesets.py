@@ -31,8 +31,14 @@ class TopRuleset(Ruleset):
 
     rel = 'TOP'
 
-    def extract(self, relations, index, context, engine, info={}):
-        return engine.analyze(relations, relations[index].deps[0], [index])
+    def extract(self, relations, index, context, engine, info=None):
+        if not info:
+            info = {}
+        deps = relations[index].deps
+        if deps:
+            return engine.analyze(relations, relations[index].deps[0], [index])
+        else:
+            return None
 
 
 class ConjRuleset(NounPhraseRuleset, VerbPhraseRuleset):
@@ -41,7 +47,7 @@ class ConjRuleset(NounPhraseRuleset, VerbPhraseRuleset):
 
     rel = 'conj'
 
-    def extract(self, relations, index, context, engine, info={}):
+    def extract(self, relations, index, context, engine, info=None):
         """extract(relations, index, context, engine, info) -> list(str)
         OUTDATED
 
@@ -54,6 +60,8 @@ class ConjRuleset(NounPhraseRuleset, VerbPhraseRuleset):
                 conj(Mary, John)
                 -> return ['John']
         """
+        if not info:
+            info = {}
 
         if info['class'] == 'NP':
             logger.debug('ConjRuleset is processing node as NP')

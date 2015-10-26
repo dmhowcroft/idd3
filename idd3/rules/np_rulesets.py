@@ -19,20 +19,20 @@ from __future__ import print_function, unicode_literals, division
 from idd3 import Relation, Ruleset
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 
 class NounPhraseRuleset(Ruleset):
-
     """A base class for NP-like dependency substructures."""
 
     @staticmethod
-    def process_determiners(relations, index, context, engine, info={}):
+    def process_determiners(relations, index, context, engine):
 
         """TODO: Docstring for process_determiners."""
 
         det_index = Relation.get_children_with_dep('det', relations, index)
-        if det_index == []:
+        if not det_index:
             det = None
         else:
             det = engine.analyze(relations, det_index[0], context + [index])
@@ -40,7 +40,7 @@ class NounPhraseRuleset(Ruleset):
         return det
 
     @staticmethod
-    def process_possessives(relations, index, context, engine, info={}):
+    def process_possessives(relations, index, context, engine):
 
         """TODO: Docstring for process_possessives."""
 
@@ -53,7 +53,7 @@ class NounPhraseRuleset(Ruleset):
         return poss
 
     @staticmethod
-    def process_noun_modifiers(relations, index, context, engine, info={}):
+    def process_noun_modifiers(relations, index, context, engine):
 
         """TODO: Docstring for process_noun_modifiers."""
 
@@ -65,7 +65,7 @@ class NounPhraseRuleset(Ruleset):
         return nns
 
     @staticmethod
-    def process_conjs(relations, index, context, engine, info={}):
+    def process_conjs(relations, index, context, engine):
 
         """TODO: Docstring for process_conjs."""
 
@@ -93,7 +93,7 @@ class NounPhraseRuleset(Ruleset):
         return conjs
 
     @staticmethod
-    def process_preps(relations, index, context, engine, info={}):
+    def process_preps(relations, index, context, engine):
 
         """TODO: Docstring for process_preps."""
 
@@ -103,7 +103,7 @@ class NounPhraseRuleset(Ruleset):
             engine.analyze(relations, i, context + [index])
 
     @staticmethod
-    def process_modifiers(relations, index, context, engine, info={}):
+    def process_modifiers(relations, index, context, engine):
 
         """TODO: Docstring for process_modifiers."""
 
@@ -233,7 +233,7 @@ class NounPhraseRuleset(Ruleset):
 
         # TODO: properly handle distribution of possessives.
         return_list = []
-        ids_for_preconj = []    # Ids of propositions for reference by eventual
+        ids_for_preconj = []  # Ids of propositions for reference by eventual
         # preconj propositions.
 
         for conj in conjs:
@@ -259,17 +259,21 @@ class NounPhraseRuleset(Ruleset):
 
         return return_list, ids_for_preconj
 
-    def handle_np_with_of_phrase(relations, index, context, engine, info={}):
+    @staticmethod
+    def handle_np_with_of_phrase(relations, index, context, engine):
 
         """Handle noun phrases that start with 'of' phrases, such as
             'some of'."""
 
         prep_index = Relation.get_children_with_dep('prep', relations, index)[0]
-        pobj_index = Relation.get_children_with_dep('pobj', relations,
-                                                    prep_index)[0]
+        pobj_children = Relation.get_children_with_dep('pobj', relations, prep_index)
+        if pobj_children:
+            pobj_index = pobj_children[0]
+        else:
+            # TODO check this is okay
+            return None
 
-        pobj_return_value = engine.analyze(relations, pobj_index, context +
-                                           [index, prep_index])
+        pobj_return_value = engine.analyze(relations, pobj_index, context + [index, prep_index])
 
         for noun in pobj_return_value['return_list']:
             engine.emit((noun, relations[index].word + ' ' +
@@ -279,48 +283,40 @@ class NounPhraseRuleset(Ruleset):
 
         return pobj_return_value
 
-    def extract(self, relations, index, context, engine, info={}):
-        if relations[index].word.lower() in ('some', 'kind') and\
-                relations[relations[index].deps[0]].rel == 'prep':
-            return NounPhraseRuleset.handle_np_with_of_phrase(relations, index,
-                                                              context, engine,
-                                                              info)
+    def extract(self, relations, index, context, engine, info=None):
+        if not info:
+            info = {}
+        if relations[index].word.lower() in ('some', 'kind'):
+            if relations[index].deps:
+                if relations[relations[index].deps[0]].rel == 'prep':
+                    return NounPhraseRuleset.handle_np_with_of_phrase(relations, index, context, engine)
 
-        det = NounPhraseRuleset.process_determiners(relations, index, context,
-                                                    engine, info)
+        det = NounPhraseRuleset.process_determiners(relations, index, context, engine)
 
-        poss = NounPhraseRuleset.process_possessives(relations, index, context,
-                                                     engine, info)
+        poss = NounPhraseRuleset.process_possessives(relations, index, context, engine)
 
-        nns = NounPhraseRuleset.process_noun_modifiers(relations, index,
-                                                       context, engine, info)
+        nns = NounPhraseRuleset.process_noun_modifiers(relations, index, context, engine)
 
-        conjs = NounPhraseRuleset.process_conjs(relations, index, context,
-                                                engine, info)
+        conjs = NounPhraseRuleset.process_conjs(relations, index, context, engine)
 
-        NounPhraseRuleset.process_preps(relations, index, context, engine, info)
+        NounPhraseRuleset.process_preps(relations, index, context, engine)
 
-        mods = NounPhraseRuleset.process_modifiers(relations, index,
-                                                   context, engine, info)
+        mods = NounPhraseRuleset.process_modifiers(relations, index, context, engine)
 
         NounPhraseRuleset.process_vmod(relations, index, context, engine, info)
 
         NounPhraseRuleset.process_negs(relations, index, context, engine, info)
 
-        NounPhraseRuleset.process_npadvmods(relations, index, context,
-                                            engine, info)
+        NounPhraseRuleset.process_npadvmods(relations, index, context, engine, info)
 
-        NounPhraseRuleset.process_advmods(relations, index, context,
-                                          engine, info)
+        NounPhraseRuleset.process_advmods(relations, index, context, engine, info)
 
-        return_list, ids_for_preconj = NounPhraseRuleset.\
-            assemble_return_list(det, poss, nns, conjs)
+        return_list, ids_for_preconj = NounPhraseRuleset.assemble_return_list(det, poss, nns, conjs)
 
-        NounPhraseRuleset.process_appos(relations, index, context,
-                                        engine,
+        NounPhraseRuleset.process_appos(relations, index, context, engine,
                                         {'subj':
-                                         {'return_list': return_list,
-                                          'rcmod_wdt': None}})
+                                             {'return_list': return_list,
+                                              'rcmod_wdt': None}})
 
         predets = NounPhraseRuleset.process_predets(relations, index, context,
                                                     engine, info)
@@ -341,8 +337,8 @@ class NounPhraseRuleset(Ruleset):
         ids, wdt = NounPhraseRuleset.process_rcmod(relations, index, context,
                                                    engine,
                                                    {'subj':
-                                                    {'return_list': return_list,
-                                                     'rcmod_wdt': None}})
+                                                        {'return_list': return_list,
+                                                         'rcmod_wdt': None}})
 
         return {'return_list': return_list,
                 'preconj': preconj,
@@ -352,7 +348,6 @@ class NounPhraseRuleset(Ruleset):
 
 
 class NsubjRuleset(NounPhraseRuleset):
-
     """A ruleset that processes the 'nsubj' relation."""
 
     rel = 'nsubj'
@@ -383,12 +378,11 @@ class NsubjRuleset(NounPhraseRuleset):
 
 
 class NsubjpassRuleset(NounPhraseRuleset):
-
     """A ruleset that processes the 'nsubjpass' relation."""
 
     rel = 'nsubjpass'
 
-    def extract(self, relations, index, context, engine, info={}):
+    def extract(self, relations, index, context, engine, info=None):
         """extract(relations, index, context, engine, info) -> list(str)
         OUTDATED
 
@@ -408,18 +402,19 @@ class NsubjpassRuleset(NounPhraseRuleset):
                 conj(Mary, John)
                 -> return ['Mary, 'John']
         """
+        if not info:
+            info = {}
         d = NounPhraseRuleset.extract(self, relations, index, context, engine,
                                       info)
         return d
 
 
 class DobjRuleset(NounPhraseRuleset):
-
     """A ruleset that processes the 'dobj' relation."""
 
     rel = 'dobj'
 
-    def extract(self, relations, index, context, engine, info={}):
+    def extract(self, relations, index, context, engine, info=None):
         """extract(relations, index, context, engine, info) -> list(str)
 
         This ruleset returns a list of strings, corresponding to the
@@ -437,21 +432,22 @@ class DobjRuleset(NounPhraseRuleset):
                 conj(Mary, John)
                 -> return ['Mary, 'John']
         """
+        if not info:
+            info = {}
+
         d = NounPhraseRuleset.extract(self, relations, index, context, engine,
                                       info)
-        if d['ids_for_preconj'] == []:
+        if not d['ids_for_preconj']:
             return d['return_list']
 
 
 class PobjRuleset(NounPhraseRuleset):
-
     """A ruleset that processes the 'pobj' relation."""
 
     rel = 'pobj'
 
 
 class IobjRuleset(NounPhraseRuleset):
-
     """A ruleset that processes the 'iobj' relation."""
 
     rel = 'iobj'
@@ -478,18 +474,17 @@ class IobjRuleset(NounPhraseRuleset):
         """
         d = NounPhraseRuleset.extract(self, relations, index, context,
                                       engine)
-        if d['ids_for_preconj'] == []:
+        if not d['ids_for_preconj']:
             for value in d['return_list']:
                 engine.emit(('(to) ' + value,), 'M')
 
 
 class PossRuleset(NounPhraseRuleset):
-
     """A ruleset that processes the 'poss' relation."""
 
     rel = 'poss'
 
-    def extract(self, relations, index, context, engine, info={}):
+    def extract(self, relations, index, context, engine, info=None):
         """extract(relations, index, context, engine, info) -> str | None
 
         If the possessive modifier is a pronoun (PRP$), the pronoun is
@@ -508,37 +503,39 @@ class PossRuleset(NounPhraseRuleset):
                 -> emit((friend, John's))
                 -> return None
         """
+        if not info:
+            info = {}
+
         if relations[index].tag == 'PRP$':
             return relations[index].word
         elif relations[index].tag in ('NN', 'NNS', 'NNP'):
             d = NounPhraseRuleset.extract(self, relations, index, context,
                                           engine)
 
-            if d['ids_for_preconj'] == []:
+            if not d['ids_for_preconj']:
                 this = d['return_list']
 
-                possessive_index = Relation.get_children_with_dep('possessive',
-                                                                  relations,
-                                                                  index)[0]
-                engine.analyze(relations, possessive_index, context + [index])
+                possessive_children = Relation.get_children_with_dep('possessive', relations, index)
+                if possessive_children:
+                    possessive_index = possessive_children[0]
+                    engine.analyze(relations, possessive_index, context + [index])
 
-                referent = relations[context[-1]].word
-                for item in this:
-                    engine.emit((referent, item + "'s"), 'M')
+                    referent = relations[context[-1]].word
+                    for item in this:
+                        engine.emit((referent, item + "'s"), 'M')
 
-                # TODO: handle multiple items.
-                return None
+                    # TODO: handle multiple items.
+                    return None
         else:
             print('WARNING: poss cannot handle', relations[index].tag, 'yet')
 
 
 class NpadvmodRuleset(Ruleset):
-
     """A ruleset that processes the 'npadvmod' relation."""
 
     rel = 'npadvmod'
 
-    def extract(self, relations, index, context, engine, info={}):
+    def extract(self, relations, index, context, engine, info=None):
         """extract(relations, index, context, engine, info) -> str
 
         This ruleset returns the NP modifier as a string, without emiting
@@ -551,6 +548,9 @@ class NpadvmodRuleset(Ruleset):
                 num(years, 40)
                 -> return "40 years"
         """
+        if not info:
+            info = {}
+
         det_indices = Relation.get_children_with_dep('det', relations, index)
         poss_indices = Relation.get_children_with_dep('poss', relations, index)
         nn_indices = Relation.get_children_with_dep('nn', relations, index)
@@ -578,7 +578,6 @@ class NpadvmodRuleset(Ruleset):
 
 
 class TmodRuleset(NounPhraseRuleset):
-
     """A ruleset that processes the 'tmod' relation."""
 
     rel = 'tmod'
@@ -597,19 +596,21 @@ class TmodRuleset(NounPhraseRuleset):
         """
         this = NounPhraseRuleset.extract(self, relations, index, context,
                                          engine, info)['return_list'][0]
-        engine.emit((this, ), 'M')
+        engine.emit((this,), 'M')
 
 
 class ApposRuleset(NounPhraseRuleset):
-
     """A ruleset that processes the 'appos' relation."""
 
     rel = 'appos'
 
-    def extract(self, relations, index, context, engine, info={}):
+    def extract(self, relations, index, context, engine, info=None):
         """extract(relations, index, context, engine, info) -> None
         TODO
         """
+        if not info:
+            info = {}
+
         this = NounPhraseRuleset.extract(self, relations, index, context,
                                          engine, info)['return_list']
         for subj in info['subj']['return_list']:

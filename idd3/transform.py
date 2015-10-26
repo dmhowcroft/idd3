@@ -82,11 +82,10 @@ class RemoveUtteranceInitialConjunction(Transformation):
 
 
 class JoinNoLonger(Transformation):
-
     """Joins 'no longer' as a multiword expression."""
 
     def transform(self, relations):
-        for i in range(len(relations)):
+        for i in range(len(relations) - 1):
             if relations[i].word == 'no' and relations[i + 1].word == 'longer':
                 relations[i].rel = 'mwe'
                 relations[i + 1].rel = 'neg'
@@ -252,8 +251,12 @@ class JoinMultiWordExpressions(Transformation):
                     mwes[relation.head].append(relation.address)
 
         for head, deps in mwes.items():
-            new_word = ' '.join([relations[i].word
-                                 for i in sorted(deps + [head])])
+            try:
+                word_parts = [relations[i].word for i in sorted(deps + [head])]
+            except IndexError:
+                # TODO we should really handle MWEs better
+                continue
+            new_word = ' '.join(word_parts)
             relations[head].word = new_word
 
             delete_indices(relations, deps)
@@ -270,20 +273,20 @@ class JoinPhrasalModifiers(Transformation):
             if relation.rel in ('null', 'root', 'xcomp', 'rcmod')\
                     and relation.tag in ('VBZ', 'VBD', 'VBP', 'VB')\
                     and relation.word in self.verb_forms:
-                xcomp_indices = Relation.get_children_with_dep('xcomp',
-                                                               relations,
-                                                               index)
-                if xcomp_indices == []:
+                xcomp_indices = Relation.get_children_with_dep('xcomp', relations, index)
+                if not xcomp_indices:
                     continue
                 else:
                     xcomp_index = xcomp_indices[0]
 
                 if relations[xcomp_index].tag == 'VB':
-                    aux_indices = Relation.get_children_with_dep('aux',
-                                                                 relations,
-                                                                 xcomp_index)
-                    to_index = [index for index in aux_indices
-                                if relations[index].tag == 'TO'][0]
+                    aux_indices = Relation.get_children_with_dep('aux', relations, xcomp_index)
+
+                    aux_indices_with_to = [index for index in aux_indices if relations[index].tag == 'TO']
+                    if aux_indices_with_to:
+                        to_index = aux_indices_with_to[0]
+                    else:
+                        continue
 
                     # Append 'to' and the xcomp head to main verb.
                     relations[index].word += ' to ' + \
@@ -332,10 +335,9 @@ class JoinExpletives(Transformation):
     def transform(self, relations):
         indices_to_delete = []
 
-        for i in range(len(relations)):
+        for i in range(len(relations) - 1):
             if relations[i].tag == "EX":
-                relations[i + 1].word = relations[i].word +\
-                    ' ' + relations[i + 1].word
+                relations[i + 1].word = relations[i].word + ' ' + relations[i + 1].word
                 indices_to_delete.append(i)
 
         delete_indices(relations, indices_to_delete)
@@ -348,7 +350,7 @@ class JoinThereModifiers(Transformation):
     def transform(self, relations):
         indices_to_delete = []
 
-        for i in range(1, len(relations)):
+        for i in range(1, len(relations) - 1):
             if relations[i].word.lower() in ('up', 'down', 'right')\
                     and relations[i + 1].word == 'there':
                 relations[i + 1].word = relations[i].word +\
