@@ -90,6 +90,9 @@ def process_graphs(graphs, init_sent_num=0, verbose=False):
                 # TODO check that this is okay
                 pass
 
+        # Record the number of words for averaged statistics
+        stats['num_words'] = len(relations) - 1
+
         if verbose:
             print(colored('Sentence %d:' % (sent_num, ), 'white', attrs=['bold']))
             print('\t' + get_sentence(graph))
@@ -124,6 +127,7 @@ def process_graphs(graphs, init_sent_num=0, verbose=False):
 
     if verbose:
         print('-' * int(columns))
+
     return stats
 
 
@@ -135,13 +139,13 @@ def print_stats(stats):
 
 
 def get_sentfeats(stats):
-    total = 0
-    vals = []
+    vals = [0]
     for kind in ['P', 'M', 'C']:
         n = stats.get(kind, 0)
-        total += n
-        vals.append(str(n))
-    return str(total) + " " + " ".join(vals) + "\n"
+        vals[0] += n
+        vals.append(n/stats['num_words'])
+    vals[0] /= stats['num_words']
+    return "{} {} {} {}\n".format(*vals)
 
 
 def print_usage():
