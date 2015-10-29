@@ -613,6 +613,8 @@ class ApposRuleset(NounPhraseRuleset):
 
         this = NounPhraseRuleset.extract(self, relations, index, context,
                                          engine, info)['return_list']
-        for subj in info['subj']['return_list']:
-            for noun in this:
-                engine.emit(('(is)', subj, noun), 'P')
+
+        if 'subj' in info:
+            for subj in info['subj']['return_list']:
+                for noun in this:
+                    engine.emit(('(is)', subj, noun), 'P')

@@ -57,21 +57,20 @@ class VerbPhraseRuleset(Ruleset):
 
         # csubj
         subj_index = Relation.get_children_with_dep('csubj', relations, index)
-        if subj_index != []:
-            subj = {'return_list': [engine.analyze(relations, subj_index[0],
-                                                   context + [index])
-                                    ['return_value']],
+        if subj_index:
+            subj = {'return_list': [engine.analyze(relations, subj_index[0], context + [index])['return_value']],
                     'rcmod_wdt': None}
 
-        # Resolve relative pronouns in subordinate clauses.
-        if subj['return_list'][0] in ('that', 'which', 'who')\
-                and 'subj' in info:
-            subj['return_list'][0] += '(={0})'.format(
-                info['subj']['return_list'][0])
+        if not subj:
+            subj = {'return_list': ['(NO_SUBJ)'], 'rcmod_wdt': None}
 
         # Replace NoneType with NO SUBJECT string
         if subj['return_list'][0] is None:
             subj['return_list'][0] = '(NO_SUBJ)'
+
+        # Resolve relative pronouns in subordinate clauses.
+        if subj['return_list'][0] in ('that', 'which', 'who') and 'subj' in info:
+            subj['return_list'][0] += '(={0})'.format(info['subj']['return_list'][0])
 
         return subj
 
@@ -527,6 +526,9 @@ class VerbPhraseRuleset(Ruleset):
         this = NounPhraseRuleset.extract(self, relations, index, context,
                                          engine, info)
 
+        if not this:
+            return {'return_value': None, 'prop_ids': []}
+
         # TODO: handle cc/conj and preconj.
         complms = this['return_list']
 
@@ -607,9 +609,13 @@ class VerbPhraseRuleset(Ruleset):
                                         info, return_dict['prop_ids'])
 
         # Process conjunctions.
-        VerbPhraseRuleset.process_conjs(relations, index, context, engine,
-                                        info, self.subjs, self.auxs,
-                                        return_dict['prop_ids'])
+        try:
+            VerbPhraseRuleset.process_conjs(relations, index, context, engine,
+                                            info, self.subjs, self.auxs,
+                                            return_dict['prop_ids'])
+        except AttributeError:
+            print("AttributeError in vp_rulesets.py--XcompRuleset has no attribute 'subjs'")
+            return return_dict
 
         # Process parataxical clauses.
         VerbPhraseRuleset.process_parataxes(relations, index, context, engine,

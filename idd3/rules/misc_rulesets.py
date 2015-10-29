@@ -188,20 +188,20 @@ class PrepRuleset(Ruleset):
         """
         # pobj
         pobj_index = Relation.get_children_with_dep('pobj', relations, index)
-        if pobj_index != []:
+        if pobj_index:
             pobjs = engine.analyze(relations, pobj_index[0], context + [index])
+            if pobjs:
+                emitted_prop_ids = []
+                for pobj in pobjs['return_list']:
+                    prop_id = engine.emit((relations[index].word + ' ' + pobj,),
+                                          'M')
+                    emitted_prop_ids.append(prop_id)
 
-            emitted_prop_ids = []
-            for pobj in pobjs['return_list']:
-                prop_id = engine.emit((relations[index].word + ' ' + pobj,),
-                                      'M')
-                emitted_prop_ids.append(prop_id)
-
-            if pobjs['ids_for_preconj'] != []:
-                indices = [j for i, j in enumerate(emitted_prop_ids)
-                           if i in pobjs['ids_for_preconj']]
-                proposition = tuple([pobjs['preconj']] + indices)
-                engine.emit(proposition, 'C')
+                if pobjs['ids_for_preconj'] != []:
+                    indices = [j for i, j in enumerate(emitted_prop_ids)
+                               if i in pobjs['ids_for_preconj']]
+                    proposition = tuple([pobjs['preconj']] + indices)
+                    engine.emit(proposition, 'C')
 
         # pcomp
         pcomp_index = Relation.get_children_with_dep('pcomp', relations, index)
