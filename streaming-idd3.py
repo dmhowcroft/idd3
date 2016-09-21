@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Updated run.py for IDD3
+# Using IDD3 with spaCy
 # Copyright (C) 2015  David M. Howcroft
+#
+# This program is an extension of IDD3, which requires the GPL.
+# It also uses spaCy, which is available under the MIT license.
+# If you are able to arrange an alternative license for IDD3,
+# I am happy to consider an alternative license for this script as well.
 #
 # IDD3 is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the Free
@@ -22,7 +27,6 @@ from __future__ import print_function, unicode_literals, division
 from idd3 import Relation, Engine, rules, transform
 import nltk
 from sys import argv
-from subprocess import call
 from collections import defaultdict
 
 import logging
@@ -31,7 +35,8 @@ logging.basicConfig(level=logging.INFO)
 import os
 # columns is the width of the terminal the user is viewing
 # This is used for output pretty printing
-_, columns = os.popen('stty size', 'r').read().split()
+# _, columns = os.popen('stty size', 'r').read().split()
+columns = 50
 
 try:
     from termcolor import colored
@@ -39,21 +44,6 @@ try:
 except ImportError:
     def colored(string, color, attrs):
         return string
-
-CONLL_FILENAME = 'output.conll'
-# We write the Stanford parse to a file as an intermediate stage in our processing.
-TEMPORARY_FILENAME = 'tmp.tree'
-
-
-# Stanford parser
-# Change this variable to the path on your system
-stanford_path = os.path.expanduser('~') + "/apps/stanford-corenlp"
-# Define the path to the directory containing the version of Java you want to use
-java_dir = ''
-
-STANFORD_PARSER_INVOCATION = java_dir + 'java -mx1024m -cp ' + stanford_path + \
-    '/*: edu.stanford.nlp.parser.lexparser.LexicalizedParser ' + \
-    '-outputFormat conll2007 edu/stanford/nlp/models/lexparser/englishPCFG.ser.gz {}'
 
 
 def get_sentence(graph):
@@ -112,30 +102,64 @@ def print_sentfeats(stats):
     print(" ".join(vals))
 
 
+def print_usage():
+    print('Usage: python', argv[0], '<input file>')
+
+
 def main():
     if len(argv) < 2:
-        print('Usage: python', argv[0], '<input file>')
-        return
+        print_usage()
+        exit()
 
-    if argv[1].endswith('.conll'):
-        graphs = nltk.parse.dependencygraph.DependencyGraph.load(argv[1])
+    in_filename = argv[1]
+
+    if in_filename.endswith('.conll'):
+        graphs = nltk.parse.dependencygraph.DependencyGraph.load(in_filename)
     else:
-        with open(CONLL_FILENAME, mode='w') as conll_file, open('output.stderr', 'w') as conll_err:
-            call(STANFORD_PARSER_INVOCATION.format(argv[1]).split(' '), stdout=conll_file, stderr=conll_err)
+        print("Importing English model for spaCy parsing...")
+        from spacy.en import English
+        spacy_en = English()
+        print("Done loading models.")
 
-        # Rewrite the root node label to match NLTK's expectations
-        f = open(CONLL_FILENAME, 'r')
-        fdata = f.read()
-        f.close()
-        f = open(CONLL_FILENAME, 'w')
-        fdata = fdata.replace("root", "ROOT")
-        f.write(fdata)
-        f.close()
+        in_file = open(in_filename, 'r')
 
-        graphs = nltk.parse.dependencygraph.DependencyGraph.load(CONLL_FILENAME)
+        graphs = []
+        for line in in_file:
+            sent = spacy_en(line.strip('\n.?!'))
 
-    for dg in graphs:
-        print(dg)
+            dg = nltk.parse.dependencygraph.DependencyGraph()
+            for token in sent:
+                address = token.i+1
+                word = token.text
+                tag = spacy_en.vocab.strings[token.tag]
+                head = token.head.i+1
+                rel = spacy_en.vocab.strings[token.dep]
+                if rel == "ROOT":
+                    head = 0
+                dg.nodes[address].update(
+                {
+                    'address': address,
+                    'word': word,
+                    'lemma': word,
+                    'ctag': tag,
+                    'tag': tag,
+                    'feats': '',
+                    'head': head,
+                    'rel': rel,
+                }
+                )
+                dg.nodes[head]['deps'][rel].append(address)
+
+            if dg.nodes[0]['deps']['ROOT']:
+                root_address = dg.nodes[0]['deps']['ROOT'][0]
+                dg.root = dg.nodes[root_address]
+            else:
+                warnings.warn(
+                    "The graph doesn't contain a node "
+                    "that depends on the root element."
+                )
+            graphs.append(dg)
+            print(dg)
 
     print_sentfeats(process_graphs(graphs))
 
