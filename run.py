@@ -47,6 +47,7 @@ TEMPORARY_FILENAME = 'tmp.tree'
 
 # Stanford parser
 # Change this variable to the path on your system
+
 stanford_path = os.path.expanduser('~') + "/apps/stanford-corenlp"
 # Define the path to the directory containing the version of Java you want to use
 java_dir = ''
