@@ -7,6 +7,10 @@ IDD3 (*Propositional Idea Density from Dependency Trees*) is a Python library th
 
 The original system and evaluation is described in a 4-page IEEE conference paper [2].
 
+This is the code used in:
+
+> Howcroft, David M., and Vera Demberg. 2017. "Psycholinguistic Models of Sentence Processing Improve Sentence Readability Ranking". EACL. [ACL Anthology Page](https://aclanthology.coli.uni-saarland.de/papers/E17-1090/e17-1090)
+
 Installation
 ------------
 
